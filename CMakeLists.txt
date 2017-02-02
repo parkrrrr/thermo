@@ -11,6 +11,9 @@ target_link_libraries(monitor ${LIBS})
 add_executable (set set.cpp)
 target_link_libraries(set ${LIBS})
 
+add_executable (run run.cpp)
+target_link_libraries(run ${LIBS})
+
 add_executable (cancel cancel.cpp)
 target_link_libraries(cancel ${LIBS})
 
