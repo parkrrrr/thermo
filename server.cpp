@@ -239,8 +239,8 @@ public:
 		StartPendingRead();
 		
 		//   set timer
-		TimerHandler();
-		
+		StartTimer();
+	
 		//   io_service::run
 		ioService.run();
 		
