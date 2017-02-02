@@ -6,8 +6,8 @@ This is a work-in-progress project that will eventually provide a web interface 
 At the moment, the communication protocol is fixed at 2400 N81. To change it, you'll have to edit the source.
 
 Requirements: 
-o sqlite3
-o libSQLiteCpp
-o boost
+* sqlite3
+* libSQLiteCpp
+* boost
 
 To use it, run "server" and communicate with it through the other included programs.
