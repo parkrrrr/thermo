@@ -23,3 +23,6 @@ target_link_libraries(resume ${LIBS})
 add_executable (quit quit.cpp)
 target_link_libraries(quit ${LIBS})
 
+add_executable (logger logger.cpp)
+target_link_libraries(logger ${LIBS})
+
