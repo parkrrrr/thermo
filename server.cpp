@@ -5,7 +5,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 
@@ -192,14 +192,14 @@ public:
                 if (reg == 1 ) {
                     // store in shared mem
                     shared->pv = temperature;
-                    
                     std::cout << "  " << 
                         commandNames[segment.type] << " | " <<
                         "PV " << shared->pv << " | " << 
                         "SV " << shared->sv << " / " << 
                                  segment.targetSV << " | " << 
-                        "Time " << ElapsedTime() << " / " <<
-                                   segment.rampTime << 
+                        "Time " << boost::posix_time::to_simple_string(boost::posix_time::second_clock::universal_time()-segmentStartTime)
+                                << " / " <<
+                                   boost::posix_time::to_simple_string(boost::posix_time::seconds(segment.rampTime)) << 
                         "         \r";
                     std::flush(std::cout);    
                 }
