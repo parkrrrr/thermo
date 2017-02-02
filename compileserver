@@ -1,5 +1,6 @@
 #!/bin/bash
 
 gcc -o server server.cpp -lboost_system -lboost_iostreams -lc -lstdc++ -lpthread -lrt
+gcc -o monitor monitor.cpp -lboost_system -lboost_iostreams -lc -lstdc++ -lpthread -lrt
 
 
