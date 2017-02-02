@@ -77,6 +77,7 @@ public:
         mappedRegion = new boost::interprocess::mapped_region( *sharedMemory, boost::interprocess::read_write);
         shared = static_cast<Shared *>(mappedRegion->get_address());
         ticks = 0;
+        database.setBusyTimeout(1000); 
     }
     
     // logger processing 
