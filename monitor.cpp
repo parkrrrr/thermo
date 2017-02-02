@@ -21,6 +21,13 @@ public:
             timer.async_wait( boost::bind(&Monitor::TimerHandler,this));        
     }
 
+    // timer handler
+    void TimerHandler( void ) {
+        std::cout << "  " << shared->pv << "  \r";
+        std::flush(std::cout);    
+        StartTimer();
+    }
+
     // constructor
     Monitor( void ) :
     ioService(),
@@ -32,22 +39,11 @@ public:
         shared = static_cast<Shared *>(mappedRegion->get_address());
     }
     
-    // timer handler
-    void TimerHandler( void ) {
-            std::cout << "  " << shared->pv << "  \r";
-        std::flush(std::cout);    
-        //   reset timer
-        StartTimer();
-    }
-
-    // monitor thread
+    // monitor processing 
     void Run(void)
     {
-        //   set timer
         StartTimer();    
-        //   io_service::run
         ioService.run();
-        
     }
 };
 
