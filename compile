@@ -1,5 +1,0 @@
-#!/bin/bash
-
-gcc -o get-temp get-temp.cpp -lboost_system -lboost_iostreams -lc -lstdc++ -lpthread
-
-
