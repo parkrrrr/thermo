@@ -18,7 +18,7 @@ class Controller {
 Controller::Controller( std::string device ) :
   io_service(), port( io_service, device )
 {
-  port.set_option(boost::asio::serial_port_base::baud_rate(9600));
+  port.set_option(boost::asio::serial_port_base::baud_rate(2400));
   port.set_option(boost::asio::serial_port_base::stop_bits());
   port.set_option(boost::asio::serial_port_base::parity());
   port.set_option(boost::asio::serial_port_base::character_size(8));
@@ -43,7 +43,6 @@ std::string Controller::Command( std::string cmdString ) {
 int Controller::Temperature( void ) {
   std::string line = Command( "*V01");
 
-std::cout << line << "\n";
   std::stringstream stream(line.substr(4));
   int tempval = 0;  
   stream >> tempval;
