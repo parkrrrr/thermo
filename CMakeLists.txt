@@ -11,3 +11,15 @@ target_link_libraries(monitor ${LIBS})
 add_executable (set set.cpp)
 target_link_libraries(set ${LIBS})
 
+add_executable (cancel cancel.cpp)
+target_link_libraries(cancel ${LIBS})
+
+add_executable (pause pause.cpp)
+target_link_libraries(pause ${LIBS})
+
+add_executable (resume resume.cpp)
+target_link_libraries(resume ${LIBS})
+
+add_executable (quit quit.cpp)
+target_link_libraries(quit ${LIBS})
+
