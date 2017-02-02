@@ -54,6 +54,39 @@ public:
     boost::posix_time::ptime segmentStartTime; 
     int segmentStartTemp;
 
+    std::list<std::string> pendingCommands;
+    bool commandSent;
+    boost::posix_time::ptime lastSentCommand;
+
+    void DequeueCommand( void ) {
+        if ( pendingCommands.empty()) { 
+            commandSent = false;
+        }
+        else {
+            lastSentCommand = boost::posix_time::second_clock::universal_time();
+            commandSent = true;
+            std::string command = pendingCommands.front();
+            pendingCommands.pop_front(); 
+            boost::asio::write( serialPort, boost::asio::buffer(command));            
+        } 
+    }
+
+    // send or queue a command
+    void SendCommand( std::string command ) {
+        bool send = false;
+        if ( !commandSent ) {
+            send = true;
+        }
+        pendingCommands.push_back( command );
+        boost::posix_time::ptime now = boost::posix_time::second_clock::universal_time();
+        if ( !send && (now - lastSentCommand).total_seconds() > 2 ) {
+            send = true;
+        }
+        if ( send ) {
+            DequeueCommand();
+        } 
+    }
+
     void StartPendingRead( void ) {
         if ( !abort ) boost::asio::async_read_until( serialPort, readBuffer, "\r\n", boost::bind(&Processor::ReadHandler, this) );    
     }
@@ -75,10 +108,10 @@ public:
     }
     
     void SetSV( int temp, bool nvram ) {
-        char cmd = nvram ? 'W' : 'P';
         std::stringstream stream;
-        stream << "*" << cmd << "011" << std::setw(5) << std::setfill('0') << std::hex << temp << "\r\n";
-        boost::asio::write( serialPort, boost::asio::buffer(stream.str()));                               
+        char command = nvram ? 'W' : 'P';
+        stream << "*" << command << "011" << std::setw(5) << std::setfill('0') << std::hex << std::setiosflags(std::ios::uppercase) << temp << "\r\n";
+        SendCommand( stream.str());  
         shared->sv = temp;    
     }
     
@@ -121,7 +154,7 @@ public:
             // if ramp SV changed
             int usedTime = ElapsedTime();
             int newSV = (segment.targetSV - segmentStartTemp) * usedTime / segment.rampTime + segmentStartTemp;
-            if ( newSV != shared->sv ) {
+            if ( labs(newSV - shared->sv) > pv_margin ) {
                 SetSV( newSV, false );
             }
         }
@@ -179,7 +212,7 @@ public:
     // timer handler
     void TimerHandler( void ) {
         // Start read PV
-        boost::asio::write( serialPort, boost::asio::buffer("*V01\r\n"));
+        SendCommand("*V01\r\n");
         MessageLoop();
         StartTimer();
     }
@@ -219,9 +252,6 @@ public:
                 }
                 break;
             }
-            case 'W': {
-                break;
-            }
             default: {
                 break;
             }
@@ -229,6 +259,7 @@ public:
         
         CheckTimeAndPV();    
         StartPendingRead();
+        DequeueCommand();
     }
 
     void WriteFiringRecord( void ) {
@@ -258,7 +289,6 @@ public:
  
         // set SV to 0 degrees
         std::stringstream stream;
-        SetSV( 0, false );
         SetSV( 0, true );
         
         segment.type = SegmentType::Pause;
@@ -297,7 +327,6 @@ public:
             const char *instruction = query.getColumn(0);
             int temp = query.getColumn(1);
             int param = query.getColumn(2);
-
             Segment newseg;
             newseg.targetSV = temp;
             newseg.rampTime = 0;
@@ -319,7 +348,7 @@ public:
             default:
                 break; 
             }
-            segmentQueue.push_back(segment);
+            segmentQueue.push_back(newseg);
             previousTemp = temp;
         }
         CreateFiring(programID);
@@ -410,19 +439,23 @@ public:
         messageQueue = new boost::interprocess::message_queue( boost::interprocess::create_only, "thermo_message_queue", 100, sizeof(Message));
         
         abort = false;
-        
+        commandSent = false;
+ 
         // set up serial port
         serialPort.set_option(boost::asio::serial_port_base::baud_rate(2400));
         serialPort.set_option(boost::asio::serial_port_base::stop_bits());
         serialPort.set_option(boost::asio::serial_port_base::parity());
         serialPort.set_option(boost::asio::serial_port_base::character_size(8));
         serialPort.set_option(boost::asio::serial_port_base::flow_control());
+   
+        database.setBusyTimeout(1000); 
     }
     
     // asio processing
     void Run(void)
-    {    
+    {  
         StartPendingRead();
+        SendCommand("*Z02\r\n");
         StartTimer();
         CancelMessageHandler(); 
 	ioService.run();
