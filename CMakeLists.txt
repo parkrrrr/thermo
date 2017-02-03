@@ -26,4 +26,6 @@ target_link_libraries(resume ${LIBS})
 add_executable (quit quit.cpp)
 target_link_libraries(quit ${LIBS})
 
+add_executable (status.cgi status.cgi.cpp)
+target_link_libraries(status.cgi ${LIBS} cgicc jsoncpp)
 
