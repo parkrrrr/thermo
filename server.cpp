@@ -368,7 +368,7 @@ public:
     void StartMessageHandler( int programID, int segmentID ) {
         CancelMessageHandler();
        
-        SQLite::Statement query( database, "SELECT instruction, temperature, param FROM Programs WHERE programID = ? AND step >= ?");
+        SQLite::Statement query( database, "SELECT instruction, temperature, param FROM Programs WHERE programID = ? AND step >= ? ORDER BY step");
         query.bind(1, programID); 
         query.bind(2, segmentID); 
 
