@@ -15,8 +15,29 @@
 
 static const std::string device = "/dev/ttyUSB0";
 static const int pv_margin = 5; // degrees Fahrenheit either side of SV
+static const int firingLogInterval = 5; // seconds between logs while firing
+static const int idleLogInterval = 60; // seconds between logs while idle
 
 static const char *commandNames[] = {"     ","AFAP ","Hold ","Pause","Ramp "};
+
+// to_time_t isn't defined until boost 1.58. Raspbian Jessie is still on 1.55.
+// code from https://stackoverflow.com/a/4462309
+time_t to_time_t(boost::posix_time::ptime t)
+{
+    using namespace boost::posix_time;
+    ptime epoch(boost::gregorian::date(1970,1,1));
+    time_duration::sec_type x = (t - epoch).total_seconds();
+    return time_t(x);
+}
+
+// convert to ISO-standard time string
+std::string to_iso_time(boost::posix_time::ptime t) {
+    boost::posix_time::time_facet *facet = new boost::posix_time::time_facet("%Y-%m-%d %H:%M:%S%F%Q");
+    std::stringstream stream;
+    stream.imbue(std::locale(stream.getloc(), facet));
+    stream << t;
+    return stream.str();
+}
 
 class Segment {
 public:
@@ -217,6 +238,47 @@ public:
         StartTimer();
     }
 
+    // write log
+    void WriteLog( void ) {
+        boost::posix_time::ptime now (boost::posix_time::second_clock::universal_time());
+        static int lastFiringTick=-1;
+        static int lastIdleTick=-1; 
+
+        std::cout << "  " << 
+            commandNames[segment.type] << " | " <<
+            "PV " << shared->pv << " | " << 
+            "SV " << shared->sv << " / " << 
+                     segment.targetSV << " | " << 
+            "Time " << boost::posix_time::to_simple_string(boost::posix_time::seconds(shared->segTimeElapsed))
+                    << " / " <<
+                       boost::posix_time::to_simple_string(boost::posix_time::seconds(segment.rampTime)) << 
+            "         \r";
+        std::flush(std::cout);    
+
+        if (shared->firingID) {
+            lastIdleTick=-1;
+            int firingTick = (shared->segTimeElapsed+shared->progTimeElapsed)/firingLogInterval;
+            if ( firingTick == lastFiringTick ) return;
+            lastFiringTick = firingTick;
+        }
+        else {
+            lastFiringTick=-1;
+            int idleTick = shared->segTimeElapsed / idleLogInterval;
+            if ( idleTick == lastIdleTick ) return;
+            lastIdleTick = idleTick;
+        } 
+        SQLite::Statement statement(database,
+            "INSERT INTO Log VALUES (?,?,?,?,?,?,?)");
+        statement.bind(1,to_iso_time(now));
+        statement.bind(2,static_cast<int>(to_time_t(now)));
+        statement.bind(3,shared->firingID);
+        statement.bind(4,shared->stepID);
+        statement.bind(5,shared->pv);
+        statement.bind(6,shared->progTimeElapsed+shared->segTimeElapsed);
+        statement.bind(7,shared->segTimeElapsed);
+        statement.exec(); 
+    }
+
     // read handler
     void ReadHandler( void ) {
         // get line
@@ -239,16 +301,7 @@ public:
                     // store in shared mem
                     shared->pv = temperature;
                     shared->segTimeElapsed = ElapsedTime();
-                    std::cout << "  " << 
-                        commandNames[segment.type] << " | " <<
-                        "PV " << shared->pv << " | " << 
-                        "SV " << shared->sv << " / " << 
-                                 segment.targetSV << " | " << 
-                        "Time " << boost::posix_time::to_simple_string(boost::posix_time::seconds(shared->segTimeElapsed))
-                                << " / " <<
-                                   boost::posix_time::to_simple_string(boost::posix_time::seconds(segment.rampTime)) << 
-                        "         \r";
-                    std::flush(std::cout);    
+                    WriteLog();
                 }
                 break;
             }
@@ -264,13 +317,16 @@ public:
 
     void WriteFiringRecord( void ) {
         if ( shared->firingID && shared->stepID ) {
+            boost::posix_time::ptime now = boost::posix_time::second_clock::universal_time();
             SQLite::Statement statement(database,
-               "INSERT INTO \"Firings\" VALUES (?,?,?,?,?)");
+               "INSERT INTO \"Firings\" VALUES (?,?,?,?,?,?,?)");
             statement.bind(1, shared->firingID);
             statement.bind(2, shared->stepID );
             statement.bind(3, commandNames[segment.type] );
             statement.bind(4, shared->pv );
-            statement.bind(5, shared->segTimeElapsed); 
+            statement.bind(5, shared->segTimeElapsed);
+            statement.bind(6, static_cast<int>(to_time_t(segmentStartTime)));
+            statement.bind(7, static_cast<int>(to_time_t(now))); 
             statement.exec();
         } 
     }
@@ -299,15 +355,10 @@ public:
     // create a firing record for this firing
     void CreateFiring(int programID) {
         boost::posix_time::ptime now = boost::posix_time::second_clock::universal_time();
-        boost::posix_time::time_facet *facet = new boost::posix_time::time_facet("%Y-%m-%d %H:%M:%S%F%Q");
-        std::stringstream stream;
-        stream.imbue(std::locale(stream.getloc(), facet));
-        stream << now;
- 
         SQLite::Statement statement(database, 
             "INSERT INTO FiringInfo VALUES( NULL, ?, ?, NULL)");
         statement.bind(1, programID > 0 ? programID : NULL );
-        statement.bind(2, stream.str());
+        statement.bind(2, to_iso_time(now));
         statement.exec();
         shared->firingID = database.getLastInsertRowid(); 
         shared->stepID = 0;
