@@ -11,3 +11,5 @@ Requirements:
 * boost
 
 To use it, run "server" and communicate with it through the other included programs.
+
+[Issue tracking at overv.io](https://overv.io/parkrrrr/thermo/)
