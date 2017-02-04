@@ -47,6 +47,7 @@ public:
     SharedMemory( bool create = false ) {
         using namespace boost::interprocess;
         if ( create ) {
+            boost::interprocess::shared_memory_object::remove( "thermo_shared_memory");
             sharedMemory = new shared_memory_object( create_only, "thermo_shared_memory", read_write );
             sharedMemory->truncate(1000);
         }
@@ -72,6 +73,7 @@ public:
     {
         using namespace boost::interprocess;
         if ( create ) {
+            boost::interprocess::message_queue::remove("thermo_message_queue");
             messageQueue = new message_queue( create_only, "thermo_message_queue", 100, sizeof(Message));
         }
         else {
@@ -91,6 +93,10 @@ public:
         message.param2 = param2;
  
         messageQueue->send( &message, sizeof(Message), 0);
+    }
+    
+    bool TryReceive( void *message, boost::interprocess::message_queue::size_type msgSize, boost::interprocess::message_queue::size_type &receivedSize, unsigned int priority) {
+        return messageQueue->try_receive( message, msgSize, receivedSize, priority );
     }
 };
    

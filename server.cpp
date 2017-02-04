@@ -6,8 +6,6 @@
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/ipc/message_queue.hpp>
 #include <sqlite3.h>
 #include <SQLiteCpp/SQLiteCpp.h>
 
@@ -104,9 +102,8 @@ class Processor {
     boost::asio::serial_port serialPort;
     boost::asio::streambuf readBuffer;
     boost::asio::deadline_timer timer;
-    boost::interprocess::shared_memory_object *sharedMemory;
-    boost::interprocess::mapped_region *mappedRegion;
-    boost::interprocess::message_queue *messageQueue;
+    SharedMemory sharedMemory;
+    MessageQueue messageQueue;
     Shared *shared;   
   
     bool abort;
@@ -239,7 +236,7 @@ public:
         boost::interprocess::message_queue::size_type receivedSize = 0;
         unsigned int priority = 0;
         
-        while (messageQueue->try_receive( &message, sizeof(Message), receivedSize, priority )) {
+        while (messageQueue->TryReceive( &message, sizeof(Message), receivedSize, priority )) {
             if ( receivedSize == sizeof(Message)) {
                 // post msg handler to asio queue
                 switch ( message.messageID ) {
@@ -525,22 +522,14 @@ public:
     ioService(),
     readBuffer(),
     timer(ioService),
-    serialPort(ioService, settings("port",default_device))
-    
+    serialPort(ioService, settings("port",default_device)),
+    sharedMemory(true),
+    messageQueue(true),
+    shared(sharedMemory)   
     {
-        // create shared mem
-        boost::interprocess::shared_memory_object::remove( "thermo_shared_memory");
-        sharedMemory = new boost::interprocess::shared_memory_object( boost::interprocess::create_only, "thermo_shared_memory", boost::interprocess::read_write );
-        sharedMemory->truncate(1000);
-        mappedRegion = new boost::interprocess::mapped_region( *sharedMemory, boost::interprocess::read_write);
-        shared = static_cast<Shared *>(mappedRegion->get_address());
         memset(shared, 0, sizeof(Shared));
         
         shared->pv = -1;
-        
-        // create msg queue
-        boost::interprocess::message_queue::remove("thermo_message_queue");
-        messageQueue = new boost::interprocess::message_queue( boost::interprocess::create_only, "thermo_message_queue", 100, sizeof(Message));
         
         abort = false;
         commandSent = false;
