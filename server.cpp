@@ -76,11 +76,16 @@ public:
     SegmentType type;
     int targetSV;
     int rampTime;   
+
+    boost::posix_time::ptime startTime; 
+    int startTemp;
+
     
     Segment(void) {
         type = SegmentType::Pause;
         targetSV = 0;
         rampTime = 0;
+        startTemp = 0;
     }
 };
 
@@ -104,9 +109,6 @@ class Processor {
     Segment segment;
     SegmentQueue segmentQueue;
     
-    boost::posix_time::ptime segmentStartTime; 
-    int segmentStartTemp;
-
     std::list<std::string> pendingCommands;
     bool commandSent;
     boost::posix_time::ptime lastSentCommand;
@@ -117,12 +119,20 @@ class Processor {
     
 public:
 
+    boost::posix_time::ptime Now( void ) {
+        return boost::posix_time::second_clock::universal_time();
+    }
+    
+    int ElapsedTime( void ) {
+        return (Now() - segment.startTime).total_seconds();
+    }
+    
     void DequeueCommand( void ) {
         if ( pendingCommands.empty()) { 
             commandSent = false;
         }
         else {
-            lastSentCommand = boost::posix_time::second_clock::universal_time();
+            lastSentCommand = Now();
             commandSent = true;
             std::string command = pendingCommands.front();
             pendingCommands.pop_front(); 
@@ -137,8 +147,7 @@ public:
             send = true;
         }
         pendingCommands.push_back( command );
-        boost::posix_time::ptime now = boost::posix_time::second_clock::universal_time();
-        if ( !send && (now - lastSentCommand).total_seconds() > 2 ) {
+        if ( !send && (Now() - lastSentCommand).total_seconds() > 2 ) {
             send = true;
         }
         if ( send ) {
@@ -158,12 +167,8 @@ public:
     }
   
     void ResetSegmentStart(void) {
-        segmentStartTime = boost::posix_time::second_clock::universal_time();
-        segmentStartTemp = shared->pv;
-    }
-    
-    int ElapsedTime( void ) {
-        return (boost::posix_time::second_clock::universal_time() - segmentStartTime).total_seconds();
+        segment.startTime = Now();
+        segment.startTemp = shared->pv;
     }
     
     void SetSV( int temp, bool nvram ) {
@@ -212,7 +217,7 @@ public:
         if ( segment.type == SegmentType::Ramp ) {
             // if ramp SV changed
             int usedTime = ElapsedTime();
-            int newSV = (segment.targetSV - segmentStartTemp) * usedTime / segment.rampTime + segmentStartTemp;
+            int newSV = (segment.targetSV - segment.startTemp) * usedTime / segment.rampTime + segment.startTemp;
             if ( labs(newSV - shared->sv) > pv_margin ) {
                 SetSV( newSV, false );
             }
@@ -268,28 +273,21 @@ public:
         }        
     }
     
-    // timer handler
-    void TimerHandler( void ) {
-        // Start read PV
-        SendCommand("*V01\r\n");
-        MessageLoop();
-        StartTimer();
-    }
-
     // write log
     void WriteLog( void ) {
-        boost::posix_time::ptime now (boost::posix_time::second_clock::universal_time());
         static int lastFiringTick=-1;
         static int lastIdleTick=-1; 
 
         std::cout << "  " << 
             commandNames[segment.type] << " | " <<
-            "PV " << shared->pv << " | " << 
-            "SV " << shared->sv << " / " << 
-                     segment.targetSV << " | " << 
-            "Time " << boost::posix_time::to_simple_string(boost::posix_time::seconds(shared->segTimeElapsed))
-                    << " / " <<
-                       boost::posix_time::to_simple_string(boost::posix_time::seconds(segment.rampTime)) << 
+            "PV " << 
+              shared->pv << " | " << 
+            "SV " << 
+              shared->sv << " / " << 
+              segment.targetSV << " | " << 
+            "Time " << 
+              boost::posix_time::to_simple_string(boost::posix_time::seconds(shared->segTimeElapsed)) << " / " <<
+              boost::posix_time::to_simple_string(boost::posix_time::seconds(segment.rampTime)) << 
             "         \r";
         std::flush(std::cout);    
 
@@ -308,13 +306,56 @@ public:
         SQLite::Statement statement(database,
             "INSERT INTO Log VALUES (?,?,?,?,?,?,?)");
         statement.bind(1,to_iso_time(now));
-        statement.bind(2,static_cast<int>(to_time_t(now)));
+        statement.bind(2,static_cast<int>(to_time_t(Now())));
         statement.bind(3,shared->firingID);
         statement.bind(4,shared->stepID);
         statement.bind(5,shared->pv);
         statement.bind(6,shared->progTimeElapsed+shared->segTimeElapsed);
         statement.bind(7,shared->segTimeElapsed);
         statement.exec(); 
+    }
+
+    // create a firing record for this firing
+    void CreateFiring(int programID) {
+        std::string isoTime( to_iso_time(Now()));
+        SQLite::Statement statement(database, "INSERT INTO FiringInfo VALUES( NULL, ?, ?, NULL)");
+        statement.bind(1, programID > 0 ? programID : NULL );
+        statement.bind(2, isoTime );
+        statement.exec();
+                
+        shared->firingID = database.getLastInsertRowid();         
+        shared->stepID = 0;
+        
+        if ( programID ) {
+            SQLite::Statement update( database, "UPDATE Programs SET lastExecTime=?, execCount=execCount+1 WHERE ProgramID = ?" );                                      
+            update.bind(1, isoTime );
+            update.bind(2, programID );
+            update.exec();
+        }
+    }  
+    
+    void WriteFiringRecord( void ) {
+        if ( shared->firingID && shared->stepID ) {
+            SQLite::Statement statement(database,
+               "INSERT INTO \"Firings\" VALUES (?,?,?,?,?,?,?)");
+            statement.bind(1, shared->firingID);
+            statement.bind(2, shared->stepID );
+            statement.bind(3, commandNames[segment.type] );
+            statement.bind(4, shared->pv );
+            statement.bind(5, shared->segTimeElapsed);
+            statement.bind(6, static_cast<int>(to_time_t(segment.startTime)));
+            statement.bind(7, static_cast<int>(to_time_t(Now())); 
+            statement.exec();
+        } 
+    }
+    
+public:
+    // timer handler
+    void TimerHandler( void ) {
+        // Start read PV
+        SendCommand("*V01\r\n");
+        MessageLoop();
+        StartTimer();
     }
 
     // read handler
@@ -353,22 +394,6 @@ public:
         DequeueCommand();
     }
 
-    void WriteFiringRecord( void ) {
-        if ( shared->firingID && shared->stepID ) {
-            boost::posix_time::ptime now = boost::posix_time::second_clock::universal_time();
-            SQLite::Statement statement(database,
-               "INSERT INTO \"Firings\" VALUES (?,?,?,?,?,?,?)");
-            statement.bind(1, shared->firingID);
-            statement.bind(2, shared->stepID );
-            statement.bind(3, commandNames[segment.type] );
-            statement.bind(4, shared->pv );
-            statement.bind(5, shared->segTimeElapsed);
-            statement.bind(6, static_cast<int>(to_time_t(segmentStartTime)));
-            statement.bind(7, static_cast<int>(to_time_t(now))); 
-            statement.exec();
-        } 
-    }
-    
     // cancel msg handler
     void CancelMessageHandler( void ) {
         WriteFiringRecord();
@@ -389,18 +414,6 @@ public:
         segment.targetSV = 0;
         segment.rampTime = 0;
     }
-
-    // create a firing record for this firing
-    void CreateFiring(int programID) {
-        boost::posix_time::ptime now = boost::posix_time::second_clock::universal_time();
-        SQLite::Statement statement(database, 
-            "INSERT INTO FiringInfo VALUES( NULL, ?, ?, NULL)");
-        statement.bind(1, programID > 0 ? programID : NULL );
-        statement.bind(2, to_iso_time(now));
-        statement.exec();
-        shared->firingID = database.getLastInsertRowid(); 
-        shared->stepID = 0;
-    } 
 
     // start msg handler
     void StartMessageHandler( int programID, int segmentID ) {
@@ -456,7 +469,7 @@ public:
         // insert remainder of current segment after current segment
         if ( newseg.type == SegmentType::Ramp ) {
             // adjust ramp time by comparing SV to target SV and scaling
-            newseg.rampTime = newseg.rampTime * (shared->sv - segmentStartTemp) / (newseg.targetSV-segmentStartTemp);
+            newseg.rampTime = newseg.rampTime * (shared->sv - segment.startTemp) / (newseg.targetSV-segment.startTemp);
         }
         if ( newseg.type == SegmentType::Hold) {
             // adjust hold time by subtracting time held so far
