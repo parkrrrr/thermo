@@ -1,4 +1,5 @@
 #pragma once
+
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 
@@ -44,38 +45,52 @@ class SharedMemory {
     void *memory;
 public:    
     SharedMemory( bool create = false ) {
-        using boost::interprocess;
-        sharedMemory = new shared_memory_object( create ? create_only : open_only, "thermo_shared_memory", read_write );
-        if ( create ) sharedMemory->truncate(1000);
+        using namespace boost::interprocess;
+        if ( create ) {
+            sharedMemory = new shared_memory_object( create_only, "thermo_shared_memory", read_write );
+            sharedMemory->truncate(1000);
+        }
+        else {
+            sharedMemory = new shared_memory_object( open_only, "thermo_shared_memory", read_write );
+        }
         mappedRegion = new mapped_region( *sharedMemory, read_write);
         memory = mappedRegion->get_address();
     }
     
     ~SharedMemory(void) {
-        memory = nullptr;
         delete mappedRegion;
         delete sharedMemory;
     }
     
-    void *operator void *(void) {return memory;}
+    operator Shared *(void) {return static_cast<Shared *>(memory);}
 };
         
 class MessageQueue {
-    boost::interprocess::message_queue messageQueue;
+    boost::interprocess::message_queue *messageQueue;
 public:
     MessageQueue( bool create = false ) 
-        : messageQueue( create ? boost::interprocess::create_only : boost::interprocess::open_only, "thermo_message_queue", 100, sizeof(Message))
     {
+        using namespace boost::interprocess;
+        if ( create ) {
+            messageQueue = new message_queue( create_only, "thermo_message_queue", 100, sizeof(Message));
+        }
+        else {
+            messageQueue = new message_queue( open_only, "thermo_message_queue");
+        }
     }
-    
-    void Send( messageID, param1, param2 ) {
+   
+    ~MessageQueue(void ) {
+        delete messageQueue;
+    }
+ 
+    void Send( int messageID, int param1, int param2 ) {
         Message message;
 
         message.messageID = messageID;
         message.param1 = param1;
         message.param2 = param2;
  
-        messageQueue.send( &message, sizeof(Message), 0);
+        messageQueue->send( &message, sizeof(Message), 0);
     }
 };
    
