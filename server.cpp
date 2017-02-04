@@ -40,6 +40,10 @@ std::string to_iso_time(boost::posix_time::ptime t) {
     return stream.str();
 }
 
+boost::posix_time::ptime Now( void ) {
+    return boost::posix_time::second_clock::universal_time();
+}
+    
 class Settings {
     SQLite::Database &database;
 public:
@@ -85,6 +89,7 @@ public:
         type = SegmentType::Pause;
         targetSV = 0;
         rampTime = 0;
+        startTime = Now();
         startTemp = 0;
     }
 };
@@ -119,10 +124,6 @@ class Processor {
     
 public:
 
-    boost::posix_time::ptime Now( void ) {
-        return boost::posix_time::second_clock::universal_time();
-    }
-    
     int ElapsedTime( void ) {
         return (Now() - segment.startTime).total_seconds();
     }
@@ -305,7 +306,7 @@ public:
         } 
         SQLite::Statement statement(database,
             "INSERT INTO Log VALUES (?,?,?,?,?,?,?)");
-        statement.bind(1,to_iso_time(now));
+        statement.bind(1,to_iso_time(Now()));
         statement.bind(2,static_cast<int>(to_time_t(Now())));
         statement.bind(3,shared->firingID);
         statement.bind(4,shared->stepID);
@@ -327,7 +328,7 @@ public:
         shared->stepID = 0;
         
         if ( programID ) {
-            SQLite::Statement update( database, "UPDATE Programs SET lastExecTime=?, execCount=execCount+1 WHERE ProgramID = ?" );                                      
+            SQLite::Statement update( database, "UPDATE ProgramInfo SET lastExecTime=?, execCount=execCount+1 WHERE ProgramID = ?" );                                      
             update.bind(1, isoTime );
             update.bind(2, programID );
             update.exec();
@@ -344,7 +345,7 @@ public:
             statement.bind(4, shared->pv );
             statement.bind(5, shared->segTimeElapsed);
             statement.bind(6, static_cast<int>(to_time_t(segment.startTime)));
-            statement.bind(7, static_cast<int>(to_time_t(Now())); 
+            statement.bind(7, static_cast<int>(to_time_t(Now()))); 
             statement.exec();
         } 
     }
