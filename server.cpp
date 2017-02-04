@@ -44,8 +44,8 @@ class Settings {
     SQLite::Database &database;
 public:
     Settings( SQLite::Database &database_ ) : database(database_) {}    
-    std::string operator ()( std::string name, std::string defVal ) {
-        std::string result;
+    std::string operator ()( std::string name, const char *defVal ) {
+        const char *result;
         SQLite::Statement query(database, "SELECT value FROM settings WHERE name=?");
         query.bind(1, name );
         if ( query.executeStep()) {
