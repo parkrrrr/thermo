@@ -11,15 +11,8 @@ int main( int argc, char **argv )
         return 1;
     }
 
-    boost::interprocess::message_queue messageQueue( boost::interprocess::open_only, "thermo_message_queue");
+    MessageQueue queue;
     
-    Message message;
-    
-    message.messageID = Message::START;
-    message.param1 = atoi(argv[1]);
-    message.param2 = 1;
- 
-    messageQueue.send( &message, sizeof(Message), 0);
-    
+    queue.Send( Message::START, atoi(argv[1]), 1 );
     return 0;
     }
