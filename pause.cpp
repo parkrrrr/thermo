@@ -6,13 +6,7 @@
 // main
 int main( int argc, char **argv )
 {
-    boost::interprocess::message_queue messageQueue( boost::interprocess::open_only, "thermo_message_queue");
-    
-    Message message;
-    
-    message.messageID = Message::PAUSE;
-    
-    messageQueue.send( &message, sizeof(Message), 0);
-    
+    MessageQueue queue;
+    queue.send(Message::PAUSE, 0, 0 );
     return 0;
     }

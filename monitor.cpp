@@ -30,7 +30,7 @@ public:
     ioService(),
     timer(ioService)
     {
-        shared = static_cast<Shared *>(sharedMemory);
+        shared = sharedMemory;
     }
     
     // monitor processing 
