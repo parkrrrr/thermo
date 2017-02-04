@@ -11,14 +11,17 @@
 
 #include "structs.h"
 
+/* These are the default values for settings specified in the Settings table in the database */
 static const char *default_device = "/dev/ttyUSB0";
 static const int default_baudrate = 2400; 
-static const int default_pv_margin = 5; // degrees Fahrenheit either side of SV
+static const int default_pv_margin = 5; // degrees either side of SV (used by Ramp and AFAP to determine whether SV has been reached, used by Ramp as temp step)
 static const int default_firingLogInterval = 5; // seconds between logs while firing
 static const int default_idleLogInterval = 60; // seconds between logs while idle
 
+/* These are the names that are written into the Firings table in the database */
 static const char *commandNames[] = {"     ","AFAP ","Hold ","Pause","Ramp "};
 
+// Convert a boost ptime to a time_t
 // to_time_t isn't defined until boost 1.58. Raspbian Jessie is still on 1.55.
 // code from https://stackoverflow.com/a/4462309
 time_t to_time_t(boost::posix_time::ptime t)
@@ -29,7 +32,7 @@ time_t to_time_t(boost::posix_time::ptime t)
     return time_t(x);
 }
 
-// convert to ISO-standard time string
+// convert ptime to ISO-standard time string
 std::string to_iso_time(boost::posix_time::ptime t) {
     boost::posix_time::time_facet *facet = new boost::posix_time::time_facet("%Y-%m-%d %H:%M:%S%F%Q");
     std::stringstream stream;
@@ -38,14 +41,18 @@ std::string to_iso_time(boost::posix_time::ptime t) {
     return stream.str();
 }
 
+// Get a boost ptime that represents the current time in UTC.
 boost::posix_time::ptime Now( void ) {
     return boost::posix_time::second_clock::universal_time();
 }
-    
+
+/* This class is used to extract settings from the database */
 class Settings {
-    SQLite::Database &database;
+    SQLite::Database &database;          // < reference to an open database
 public:
     Settings( SQLite::Database &database_ ) : database(database_) {}    
+    
+    /* Extract a string-type setting with the specified name. If it doesn't exist, return defVal */
     std::string operator()( std::string name, const char *defVal ) {
         const char *result;
         SQLite::Statement query(database, "SELECT value FROM settings WHERE name=?");
@@ -58,6 +65,8 @@ public:
         }
         return result;
     }
+    
+    /* Extract an int-type setting with the specified name. If it doesn't exist or is empty, return defVal */
     int operator()( std::string name, const int defVal ) {
         int result;
         std::string str = operator()( name, "" );
@@ -72,18 +81,20 @@ public:
     }
 };
     
+/* This class represents a segment in the currently running program. Note that some members are only meaningful for the currently-executing segment. */
 
 class Segment {
 public:
-    SegmentType type;
-    int targetSV;
-    int rampTime;   
+    SegmentType type;     // < The type of the segment
+    int targetSV;         // < The target SV for this segment (SV for AFAP, Pause, or Hold; ending SV for Ramp)
+    int rampTime;         // < The duration of a ramp or a hold segment
 
-    boost::posix_time::ptime startTime; 
-    int startTemp;
+    boost::posix_time::ptime startTime;   // < The wall clock time when this segment started (current segment only)
+    int startTemp;                        // < The PV when this segment started (current segment only)
 
     
-    Segment(void) {
+    Segment(void) { 
+        // By default, a segment puts the kiln in a "safe" state: paused with an SV of 0 degrees
         type = SegmentType::Pause;
         targetSV = 0;
         rampTime = 0;
@@ -92,39 +103,49 @@ public:
     }
 };
 
+/* A list of segments is a program. This is a program. */
 typedef std::list<Segment> SegmentQueue;
 
-class Processor {
-    SQLite::Database database;
-    Settings settings;
- 
-    boost::asio::io_service ioService;
-    boost::asio::serial_port serialPort;
-    boost::asio::streambuf readBuffer;
-    boost::asio::deadline_timer timer;
-    SharedMemory sharedMemory;
-    MessageQueue messageQueue;
-    Shared *shared;   
-  
-    bool abort;
-    
-    Segment segment;
-    SegmentQueue segmentQueue;
-    
-    std::list<std::string> pendingCommands;
-    bool commandSent;
-    boost::posix_time::ptime lastSentCommand;
+/* This class encapsulates all of the behavior of the program. 
+   Why a class instead of global variables out the (ahem)? 
+   Because we can force the initialization order of class members. Note in particular that the settings member takes a 
+   reference to the database member, so it MUST be declared after database */
 
-    int pv_margin;
-    int firingLogInterval;
-    int idleLogInterval;
+class Processor {
+    SQLite::Database database;            // < The SQLite database that holds programs and settings and logs and so on
+    Settings settings;                    // < Accessor class for database-defined settings
+ 
+    boost::asio::io_service ioService;    // < Boost management class for serial and timer operations
+    boost::asio::serial_port serialPort;  // < The serial port that talks to the controller
+    boost::asio::streambuf readBuffer;    // < The buffer into which reads from that serial port happen
+    boost::asio::deadline_timer timer;    // < The timer that forms the beating heart of the server: it sends periodic reads and determines whether state changes are needed
+    SharedMemory sharedMemory;            // < The shared memory block that communicates state to all of the clients
+    Shared *shared;                       // < A structure that points into the above memory
+    MessageQueue messageQueue;            // < The message queue with which clients tell the server what to do
+  
+    bool abort;                           // < If true, timers are not set and reads are not sent. This causes ioService to run out of work and terminate the Run loop.
+    
+    Segment segment;                      // < The currently-executing program segment. When idle, this is a Pause segment with an SV of 0.
+    SegmentQueue segmentQueue;            // < The remainder of the currently-executing program, if any.
+    
+    /* Commands to the controller are queued so it only gets and processes one at a time. The next one isn't sent until the current one is processed.
+       NOTE: This means the controller MUST be set to echo commands! */
+    std::list<std::string> pendingCommands;    // < Commands waiting to be sent to the controller
+    bool commandSent;                          // < true if there is a command outstanding at the controller
+    boost::posix_time::ptime lastSentCommand;  // < the time of the last sent command. Used to time out if the controller drops a command.
+
+    int pv_margin;                        // < The PV margin: used by ramp and AFAP to determine when the segment is done, used by ramp to determine temp step
+    int firingLogInterval;                // < The time in seconds between log entries while firing
+    int idleLogInterval;                  // < The time in seconds between log entires while idle
     
 public:
 
+    // Return the time elapsed during the current segment, in seconds
     int ElapsedTime( void ) {
         return (Now() - segment.startTime).total_seconds();
     }
     
+    // Send the next pending command, if any, to the controller
     void DequeueCommand( void ) {
         if ( pendingCommands.empty()) { 
             commandSent = false;
@@ -138,7 +159,7 @@ public:
         } 
     }
 
-    // send or queue a command
+    // Queue a command, and send it (or a command ahead of it) if the previous command timed out or there is no previous command.
     void SendCommand( std::string command ) {
         bool send = false;
         if ( !commandSent ) {
@@ -153,10 +174,13 @@ public:
         } 
     }
 
+    // Start an async read. Because the timer is constantly writing "read status" commands, there'll always be something along sooner or later, so we 
+    // almost always have an outstanding async read.
     void StartPendingRead( void ) {
         if ( !abort ) boost::asio::async_read_until( serialPort, readBuffer, "\r\n", boost::bind(&Processor::ReadHandler, this) );    
     }
     
+    // Start the timer
     void StartTimer( void ) {
         if ( !abort ) {
             timer.expires_from_now(boost::posix_time::seconds(1));
@@ -164,11 +188,17 @@ public:
         }    
     }
   
+    // Set the segment start values to the current values (UTC wall clock and temperature)
     void ResetSegmentStart(void) {
         segment.startTime = Now();
         segment.startTemp = shared->pv;
     }
-    
+
+    // Set the SV of the controller to the specified value.
+    // Note: The nvram parameter determines whether the SV will survive a controller reset.
+    //       This depends on an undocumented and unsupported feature of the Micromega CN77000 controller that
+    //       allows a setpoint value to be "put" rather than "written" into register 1. Omega technical support
+    //       denies that this should work, and disclaims any responsibility when it doesn't. I'm doing it anyway.
     void SetSV( int temp, bool nvram ) {
         std::stringstream stream;
         char command = nvram ? 'W' : 'P';
@@ -177,7 +207,7 @@ public:
         shared->sv = temp;    
     }
     
-    // next segment
+    // Go to the next segment in the current program, if any
     void NextSegment(void) {
         WriteFiringRecord();
         shared->progTimeElapsed += shared->segTimeElapsed;
@@ -191,6 +221,8 @@ public:
         else {
             CancelMessageHandler();            
         }
+               
+        // AFAP and some Pause segments can change the target SV. Hold segments do not, and ramp segments don't until later.
         if ( segment.type == SegmentType::AFAP ) {
             SetSV(segment.targetSV, false );
         }
@@ -202,16 +234,18 @@ public:
         } 
     }
     
-    // check time and PV
+    // Check whether the current PV has reached its target, or whether the current segment has timed out or needs its SV adjusted.
     void CheckTimeAndPV(void) {        
 
+        // An AFAP or Ramp segment ends if it reaches its target SV (plus or minus the PV margin)
         if ( segment.type == SegmentType::AFAP || segment.type == SegmentType::Ramp ) {
-            // if target SV reached
             if ( labs(shared->pv - segment.targetSV) <= pv_margin ) {
                 NextSegment();
             }            
         }
 
+        // A ramp segment updates the SV whenever the computed SV for this point in the ramp changes by more than the PV margin
+        // The computed SV is based on the starting SV, starting time, and ramp slope.
         if ( segment.type == SegmentType::Ramp ) {
             // if ramp SV changed
             int usedTime = ElapsedTime();
@@ -221,24 +255,24 @@ public:
             }
         }
 
+        // A Hold segment ends when the specified time is reached
         if ( segment.type == SegmentType::Hold ) {
-            // if hold time exceeded
             if ( ElapsedTime() >= segment.rampTime ) {
                 NextSegment();
             }
         }
     }
 
-    // message loop
+    // Retrieve and repost messages from the queue until the queue is empty 
     void MessageLoop(void) {
-        // get msg
+
         Message message;
         boost::interprocess::message_queue::size_type receivedSize = 0;
         unsigned int priority = 0;
         
         while (messageQueue.TryReceive( &message, sizeof(Message), receivedSize, priority )) {
             if ( receivedSize == sizeof(Message)) {
-                // post msg handler to asio queue
+                // Post message handlers to the ASIO queue. This gets them handled eventually, when there's not other work to be done (such as completed timers or async reads)
                 switch ( message.messageID ) {
                     case Message::QUIT: {
                         abort = true;
@@ -271,7 +305,7 @@ public:
         }        
     }
     
-    // write log
+    // Write a log entry to the database if needed. Display current parameters on the terminal.
     void WriteLog( void ) {
         static int lastFiringTick=-1;
         static int lastIdleTick=-1; 
@@ -313,7 +347,8 @@ public:
         statement.exec(); 
     }
 
-    // create a firing record for this firing
+    // When we start a firing, create a firing ID for it and set its start time. If it's a stored program, update the program's stats to 
+    // reflect this firing.
     void CreateFiring(int programID) {
         std::string isoTime( to_iso_time(Now()));
         SQLite::Statement statement(database, "INSERT INTO FiringInfo VALUES( NULL, ?, ?, NULL)");
@@ -331,7 +366,10 @@ public:
             update.exec();
         }
     }  
-    
+
+    // As each segment completes, we want to write the information about how that segment actually ran into the database, so that
+    // we can replicate odd situations later if necessary. This includes inserted pauses, but does not currently include external 
+    // events such as the kiln lid being opened during a firing. Those events will show up in the temperature log, though.
     void WriteFiringRecord( void ) {
         if ( shared->firingID && shared->stepID ) {
             SQLite::Statement statement(database,
@@ -348,7 +386,9 @@ public:
     }
     
 public:
-    // timer handler
+    // The timer handler executes once per second (see timeout value in StartTimer, above)
+    // It starts a read of the PV and moves any waiting messages from the IPC queue to the ASIO queue,
+    // then starts another timer.
     void TimerHandler( void ) {
         // Start read PV
         SendCommand("*V01\r\n");
@@ -356,7 +396,7 @@ public:
         StartTimer();
     }
 
-    // read handler
+    // The read handler executes when a line is received from the controller
     void ReadHandler( void ) {
         // get line
         std::istream inStream( &readBuffer );
@@ -369,12 +409,16 @@ public:
         result >> command;
         
         switch( command ) {
+            // V is the result sent from a PV query (*V01, sent by the timer handler)
+            // The format is configured as V01 xxxxx where xxxxx is the current temperature.
+            // Note that this is configurable in the controller, but the controller must be 
+            // set this way at this time.
             case 'V': {
                 // if V01 [PV]
                 int reg;                
                 int temperature;
                 result >> reg >> temperature;
-                if (reg == 1 ) {
+                if (reg == 1 ) {       // reg shouldn't be anything else but 1, because we never ask for any other value, but just in case...
                     // store in shared mem
                     shared->pv = temperature;
                     shared->segTimeElapsed = ElapsedTime();
@@ -382,17 +426,22 @@ public:
                 }
                 break;
             }
+            // Other expected results are W01 or P01, from writes or puts, or Z02, from the initial reset. We only send 
+            // one command at a time, so at the moment we just assume that if we got a response, it was to the command
+            // we just sent. Don't configure the controller to send continuous status updates, eh?
             default: {
                 break;
             }
         }
         
+        // After handling the read, check whether we need to do anything with it, start looking for another reply, and send another command if there is one waiting
         CheckTimeAndPV();    
         StartPendingRead();
         DequeueCommand();
     }
 
-    // cancel msg handler
+    // Handle the CANCEL message. This is also called by other functionality within the server: START and SET cancel the current program, as does running off the end of the program
+    // in NextSegment
     void CancelMessageHandler( void ) {
         WriteFiringRecord();
         ResetSegmentStart();
@@ -406,17 +455,18 @@ public:
  
         // set SV to 0 degrees
         std::stringstream stream;
-        SetSV( 0, true );
+        SetSV( 0, true );    // Note that we set the SV in nvram. 0 degrees is a "safe" SV to survive reset, and we really want it to stick in case that Omega guy was right.
         
         segment.type = SegmentType::Pause;
         segment.targetSV = 0;
         segment.rampTime = 0;
     }
 
-    // start msg handler
+    // Handle the START message, starting the given program at the given step
     void StartMessageHandler( int programID, int segmentID ) {
         CancelMessageHandler();
-       
+
+        // read the part of the program starting at the given segment ID
         SQLite::Statement query( database, "SELECT instruction, temperature, param FROM Programs WHERE programID = ? AND step >= ? ORDER BY step");
         query.bind(1, programID); 
         query.bind(2, segmentID); 
@@ -451,11 +501,14 @@ public:
             segmentQueue.push_back(newseg);
             previousTemp = temp;
         }
+        // We're starting a firing, so record it in the database and start running the first segment in the queue.
         CreateFiring(programID);
         NextSegment(); 
     }
 
-    // pause msg handler
+    // Handle the PAUSE message. This inserts a Pause segment in the current program, pushing a copy of the currently-running segment
+    // back onto the front of the program so it can be resumed later. If the current segment is a ramp or a hold, it must be adjusted
+    // to reflect just the part of the original ramp or hold that remains.
     void PauseMessageHandler( void ) {
         // can't pause a pause
         if ( segment.type == SegmentType::Pause ) {
@@ -483,12 +536,12 @@ public:
         NextSegment();
     } 
 
-    // resume msg handler
+    // Handle the RESUME message. This just skips to the next segment. Notably, it doesn't really care if the current segment is a Pause.
     void ResumeMessageHandler( void ) {
         NextSegment();
     }
 
-    // set msg handler
+    // Handle the SET message. This creates and runs an unnamed program that does AFAP <temperature>, PAUSE, AFAP 0
     void SetMessageHandler( int temperature ) {
         Segment newseg;
 
@@ -527,43 +580,57 @@ public:
     messageQueue(true),
     shared(sharedMemory)   
     {
+        // initialize the shared memory data
         memset(shared, 0, sizeof(Shared));
         
         shared->pv = -1;
         
+        // initialize the state of various flags
         abort = false;
         commandSent = false;
  
-        // set up serial port
+        // set up the serial port
         serialPort.set_option(boost::asio::serial_port_base::baud_rate(settings("baudrate",default_baudrate)));
         serialPort.set_option(boost::asio::serial_port_base::stop_bits());
         serialPort.set_option(boost::asio::serial_port_base::parity());
         serialPort.set_option(boost::asio::serial_port_base::character_size(8));
         serialPort.set_option(boost::asio::serial_port_base::flow_control());
    
+        // If a write to the database fails due to a lock, try again until a second elapses
         database.setBusyTimeout(1000); 
-                              
+
+        // Read server settings from the database
         pv_margin = settings("pvmargin", default_pv_margin );
         firingLogInterval = settings("firinglog", default_firingLogInterval);
         idleLogInterval = settings("idlelog", default_idleLogInterval);                            
     }
     
-    // asio processing
+    // The main program loop
     void Run(void)
     {  
+        // Reset the controller. (The reset will reply with Z02 when it completes; that's why we need a pending read.)
         StartPendingRead();
         SendCommand("*Z02\r\n");
+
+        // Start the first timer
         StartTimer();
+        
+        // Terminate the current program. There won't be one, but this will set the rest of the state to idle
         CancelMessageHandler(); 
-	ioService.run();
-	CancelMessageHandler();
+        
+        // Loop, executing handlers until there are no more events to handle. There will always be pending timers, so this won't end until we
+        // stop setting them.
+    	ioService.run();
+        
+        // Terminate the current program again, just in case whoever asked us to quit didn't already do so.
+	    CancelMessageHandler();
     }    
 };
 
-// main
+// main: create an instance of the processor and run it.
 int main( int argc, char **argv )
 {
-    // start asio thread
-    Processor threadInstance;
-    threadInstance.Run();
+    Processor instance;
+    nstance.Run();
+    return 0;
 }
