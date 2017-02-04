@@ -236,7 +236,7 @@ public:
         boost::interprocess::message_queue::size_type receivedSize = 0;
         unsigned int priority = 0;
         
-        while (messageQueue->TryReceive( &message, sizeof(Message), receivedSize, priority )) {
+        while (messageQueue.TryReceive( &message, sizeof(Message), receivedSize, priority )) {
             if ( receivedSize == sizeof(Message)) {
                 // post msg handler to asio queue
                 switch ( message.messageID ) {
