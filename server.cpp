@@ -631,6 +631,6 @@ public:
 int main( int argc, char **argv )
 {
     Processor instance;
-    nstance.Run();
+    instance.Run();
     return 0;
 }
