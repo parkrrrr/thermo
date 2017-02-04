@@ -11,7 +11,7 @@ int main( int argc, char **argv )
         return 1;
     }
     MessageQueue queue;
-    queue.send(Message::SET, atol(argv[1]), 0 );
+    queue.Send(Message::SET, atol(argv[1]), 0 );
    
     return 0;
     }

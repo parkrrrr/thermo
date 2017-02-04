@@ -7,6 +7,6 @@
 int main( int argc, char **argv )
 {
     MessageQueue queue;
-    queue.send(Message::PAUSE, 0, 0 );
+    queue.Send(Message::PAUSE, 0, 0 );
     return 0;
     }
