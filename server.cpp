@@ -13,10 +13,11 @@
 
 #include "structs.h"
 
-static const std::string device = "/dev/ttyUSB0";
-static const int pv_margin = 5; // degrees Fahrenheit either side of SV
-static const int firingLogInterval = 5; // seconds between logs while firing
-static const int idleLogInterval = 60; // seconds between logs while idle
+static const std::string default_device = "/dev/ttyUSB0";
+static const int default_baudrate = 2400; 
+static const int default_pv_margin = 5; // degrees Fahrenheit either side of SV
+static const int default_firingLogInterval = 5; // seconds between logs while firing
+static const int default_idleLogInterval = 60; // seconds between logs while idle
 
 static const char *commandNames[] = {"     ","AFAP ","Hold ","Pause","Ramp "};
 
@@ -39,11 +40,42 @@ std::string to_iso_time(boost::posix_time::ptime t) {
     return stream.str();
 }
 
+class Settings {
+    SQLite::Database &database;
+public:
+    Settings( SQLite::Database &database_ ) : database(database_) {}    
+    std::string operator ()( std::string name, std::string defVal ) {
+        std::string result;
+        SQLite::Statement query(database, "SELECT value FROM settings WHERE name=?");
+        query.bind(1, name );
+        if ( query.executeStep()) {
+            result = query.getColumn(0);
+        }
+        else {
+            result = defVal;
+        }
+        return result;
+    }
+    int operator()( std::wstring name, int defVal ) {
+        int result;
+        std::string str = operator()( name, "" );
+        if ( str.length()) {
+            std::stringstream stream(str);
+            stream >> result;
+        }
+        else {
+            result = defVal;
+        }
+        return result;
+    }
+};
+    
+
 class Segment {
 public:
     SegmentType type;
     int targetSV;
-    int rampTime;
+    int rampTime;   
     
     Segment(void) {
         type = SegmentType::Pause;
@@ -55,7 +87,6 @@ public:
 typedef std::list<Segment> SegmentQueue;
 
 class Processor {
-public:
     boost::asio::io_service ioService;
     boost::asio::serial_port serialPort;
     boost::asio::streambuf readBuffer;
@@ -63,9 +94,10 @@ public:
     boost::interprocess::shared_memory_object *sharedMemory;
     boost::interprocess::mapped_region *mappedRegion;
     boost::interprocess::message_queue *messageQueue;
-    Shared *shared;
-   
+    Shared *shared;   
+  
     SQLite::Database database;
+    Settings settings;
  
     bool abort;
     
@@ -78,6 +110,12 @@ public:
     std::list<std::string> pendingCommands;
     bool commandSent;
     boost::posix_time::ptime lastSentCommand;
+
+    int pv_margin;
+    int firingLogInterval;
+    int idleLogInterval;
+    
+public:
 
     void DequeueCommand( void ) {
         if ( pendingCommands.empty()) { 
@@ -166,7 +204,7 @@ public:
 
         if ( segment.type == SegmentType::AFAP || segment.type == SegmentType::Ramp ) {
             // if target SV reached
-            if ( labs(shared->pv - segment.targetSV) <= pv_margin ) {
+            if ( labs(shared->pv - segment.targetSV) <= pvMargin ) {
                 NextSegment();
             }            
         }
@@ -468,12 +506,13 @@ public:
 
     // constructor
     Processor( void ) :
+    database("thermo.db",SQLITE_OPEN_READWRITE),
+    settings(database),
     ioService(),
-    serialPort(ioService, device),
     readBuffer(),
     timer(ioService),
-    database("thermo.db",SQLITE_OPEN_READWRITE)
-
+    serialPort(ioService, settings("port",default_device))
+    
     {
         // create shared mem
         boost::interprocess::shared_memory_object::remove( "thermo_shared_memory");
@@ -493,13 +532,17 @@ public:
         commandSent = false;
  
         // set up serial port
-        serialPort.set_option(boost::asio::serial_port_base::baud_rate(2400));
+        serialPort.set_option(boost::asio::serial_port_base::baud_rate(settings("baudrate",default_buadrate));
         serialPort.set_option(boost::asio::serial_port_base::stop_bits());
         serialPort.set_option(boost::asio::serial_port_base::parity());
         serialPort.set_option(boost::asio::serial_port_base::character_size(8));
         serialPort.set_option(boost::asio::serial_port_base::flow_control());
    
         database.setBusyTimeout(1000); 
+                              
+        pv_margin = settings("pvmargin", default_pv_margin );
+        firingLogInterval = settings("firinglog", default_firingLogInterval);
+        idleLogInterval = settings("idlelog", default_idleLogInterval);                            
     }
     
     // asio processing
