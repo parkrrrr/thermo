@@ -13,7 +13,7 @@
 
 #include "structs.h"
 
-static const std::string default_device = "/dev/ttyUSB0";
+static const char *default_device = "/dev/ttyUSB0";
 static const int default_baudrate = 2400; 
 static const int default_pv_margin = 5; // degrees Fahrenheit either side of SV
 static const int default_firingLogInterval = 5; // seconds between logs while firing
@@ -44,7 +44,7 @@ class Settings {
     SQLite::Database &database;
 public:
     Settings( SQLite::Database &database_ ) : database(database_) {}    
-    std::string operator ()( std::string name, const char *defVal ) {
+    std::string operator()( std::string name, const char *defVal ) {
         const char *result;
         SQLite::Statement query(database, "SELECT value FROM settings WHERE name=?");
         query.bind(1, name );
@@ -56,7 +56,7 @@ public:
         }
         return result;
     }
-    int operator()( std::wstring name, int defVal ) {
+    int operator()( std::string name, const int defVal ) {
         int result;
         std::string str = operator()( name, "" );
         if ( str.length()) {
@@ -87,6 +87,9 @@ public:
 typedef std::list<Segment> SegmentQueue;
 
 class Processor {
+    SQLite::Database database;
+    Settings settings;
+ 
     boost::asio::io_service ioService;
     boost::asio::serial_port serialPort;
     boost::asio::streambuf readBuffer;
@@ -96,9 +99,6 @@ class Processor {
     boost::interprocess::message_queue *messageQueue;
     Shared *shared;   
   
-    SQLite::Database database;
-    Settings settings;
- 
     bool abort;
     
     Segment segment;
@@ -204,7 +204,7 @@ public:
 
         if ( segment.type == SegmentType::AFAP || segment.type == SegmentType::Ramp ) {
             // if target SV reached
-            if ( labs(shared->pv - segment.targetSV) <= pvMargin ) {
+            if ( labs(shared->pv - segment.targetSV) <= pv_margin ) {
                 NextSegment();
             }            
         }
@@ -532,7 +532,7 @@ public:
         commandSent = false;
  
         // set up serial port
-        serialPort.set_option(boost::asio::serial_port_base::baud_rate(settings("baudrate",default_buadrate));
+        serialPort.set_option(boost::asio::serial_port_base::baud_rate(settings("baudrate",default_baudrate)));
         serialPort.set_option(boost::asio::serial_port_base::stop_bits());
         serialPort.set_option(boost::asio::serial_port_base::parity());
         serialPort.set_option(boost::asio::serial_port_base::character_size(8));
