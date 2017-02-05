@@ -213,13 +213,12 @@ public:
         shared->progTimeElapsed += shared->segTimeElapsed;
         shared->segTimeElapsed = 0;
         
-        ResetSegmentStart();
         if ( !segmentQueue.empty()) {
             segment = segmentQueue.front();
             segmentQueue.pop_front();
         }
         else {
-            CancelMessageHandler();            
+            CancelMessageHandler(false);            
         }
                
         // AFAP and some Pause segments can change the target SV. Hold segments do not, and ramp segments don't until later.
@@ -232,6 +231,7 @@ public:
         if (shared->firingID) {
             ++shared->stepID;
         } 
+        ResetSegmentStart();
     }
     
     // Check whether the current PV has reached its target, or whether the current segment has timed out or needs its SV adjusted.
@@ -250,7 +250,7 @@ public:
             // if ramp SV changed
             int usedTime = ElapsedTime();
             int newSV = (segment.targetSV - segment.startTemp) * usedTime / segment.rampTime + segment.startTemp;
-            if ( labs(newSV - shared->sv) > pv_margin ) {
+            if ( labs(newSV - shared->sv) >= pv_margin ) {
                 SetSV( newSV, false );
             }
         }
@@ -279,7 +279,7 @@ public:
                         break;
                     }                
                     case Message::CANCEL: {
-                        ioService.post( boost::bind(&Processor::CancelMessageHandler, this));
+                        ioService.post( boost::bind(&Processor::CancelMessageHandler, this, true));
                         break;
                     }
                     case Message::SET: {
@@ -319,7 +319,8 @@ public:
               segment.targetSV << " | " << 
             "Time " << 
               boost::posix_time::to_simple_string(boost::posix_time::seconds(shared->segTimeElapsed)) << " / " <<
-              boost::posix_time::to_simple_string(boost::posix_time::seconds(segment.rampTime)) << 
+              boost::posix_time::to_simple_string(boost::posix_time::seconds(segment.rampTime)) <<
+"   " << to_iso_time(segment.startTime) << "  " << segment.startTemp << "  " <<
             "         \r";
         std::flush(std::cout);    
 
@@ -442,9 +443,10 @@ public:
 
     // Handle the CANCEL message. This is also called by other functionality within the server: START and SET cancel the current program, as does running off the end of the program
     // in NextSegment
-    void CancelMessageHandler( void ) {
-        WriteFiringRecord();
-        ResetSegmentStart();
+    void CancelMessageHandler( bool write=true ) {
+        if ( write ) {
+            WriteFiringRecord();
+        }
         
         // erase remainder of program
         segmentQueue.clear();
@@ -460,6 +462,7 @@ public:
         segment.type = SegmentType::Pause;
         segment.targetSV = 0;
         segment.rampTime = 0;
+        ResetSegmentStart();
     }
 
     // Handle the START message, starting the given program at the given step
@@ -478,19 +481,20 @@ public:
             int temp = query.getColumn(1);
             int param = query.getColumn(2);
             Segment newseg;
-            newseg.targetSV = temp;
             newseg.rampTime = 0;
 
             switch (tolower(instruction[0])) { 
             case 'h': // hold - param is seconds to hold
                 newseg.type = SegmentType::Hold;
                 newseg.rampTime = param;
+		temp = previousTemp;
                 break;
             case 'a': // afap
                 newseg.type = SegmentType::AFAP;
                 break;
             case 'p': // pause
                 newseg.type = SegmentType::Pause;
+                temp = previousTemp;
                 break;
             case 'r': // ramp - param is degrees/hour
                 newseg.type = SegmentType::Ramp;
@@ -498,6 +502,7 @@ public:
             default:
                 break; 
             }
+            newseg.targetSV = temp;
             segmentQueue.push_back(newseg);
             previousTemp = temp;
         }
