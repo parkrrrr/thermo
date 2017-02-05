@@ -320,7 +320,6 @@ public:
             "Time " << 
               boost::posix_time::to_simple_string(boost::posix_time::seconds(shared->segTimeElapsed)) << " / " <<
               boost::posix_time::to_simple_string(boost::posix_time::seconds(segment.rampTime)) <<
-"   " << to_iso_time(segment.startTime) << "  " << segment.startTemp << "  " <<
             "         \r";
         std::flush(std::cout);    
 
