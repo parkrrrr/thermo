@@ -1,0 +1,197 @@
+@font-face {
+  font-family: "D7MBI";
+  src: url("./fonts/DSEG7Modern-BoldItalic.woff") format('woff');
+}
+
+@font-face {
+    font-family: "symbola";
+    src: url("./fonts/Symbola-Thermo.woff") format('woff');    
+}
+
+.noscroll {
+    overflow: hidden; 
+}
+#fullscreen {
+    width: 100vw;
+    height: 100vh; 
+    z-index: -1;
+}
+
+#controlpanel {
+    display: block;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 288pt;
+    height: 356pt;
+    background-color: #000000; 
+    z-index: 1;
+    border: 2px solid #cccccc;
+}
+
+#tempsframe {
+    position: static;
+}   
+
+#pvframe {
+    position: static;
+} 
+
+.temperature {
+    font-family: d7mbi;
+    font-size: 72pt;
+    text-align: right;      
+}
+
+.pv {
+    position: absolute;
+    right: 16pt;
+    top: 16pt;
+    width: 100%;
+}
+
+#pvbg {
+    color: #330000;
+}
+
+#pv {
+    color: #ff0000;
+}
+
+#svframe {
+    position: static;   
+} 
+
+.sv {
+    position: absolute;
+    right: 16pt;
+    top: 112pt;
+    width: 100%;
+}
+
+#svbg {
+    color: #003300;   
+}
+
+#sv {
+    color: #00ff00;
+}
+
+#timesframe {
+}
+
+.time {
+    font-family: d7mbi;
+    font-size: 24pt;
+    text-align: right;         
+}
+
+#eltimeframe {
+    
+}
+
+.elt {
+    position: absolute;
+    right: 16pt;
+    top: 208pt;
+    width: 100%;   
+}
+
+#eltbg {
+    color: #330000;   
+}
+#elt {
+    color: #ff0000;    
+}
+
+#sctimeframe {
+    
+}
+
+.sct {
+    position: absolute;
+    right: 16pt;
+    top: 248pt;
+    width: 100%;       
+}
+
+#sctbg {
+    color: #003300;      
+}
+#sct {
+    color: #00ff00;         
+}
+
+#buttonsframe {
+    position: absolute;
+    top: 280pt;
+    left: 8pt;
+}
+
+.button {
+    display: inline-block;
+    margin: 4pt;
+    border: 1px solid #cccccc;
+    width: 56pt;
+    height: 56pt;
+    color: #cccccc;
+    background-color: black;
+    text-align: center;   
+}
+
+.buttontext {
+    display: inline-block;
+    padding: 4pt;
+    font-family: symbola;
+    font-size: 48pt;
+}
+
+
+#programs {
+    visibility: hidden;
+    position: absolute;
+    left: 1in;
+    top: 1in;
+    right: 1in;
+    bottom: 1in;
+    background-color: rgba(0,0,0,0.75);
+    border: 3px solid #cccccc;
+    z-index: 2;
+}
+
+#listframe {
+    
+}
+
+#list {
+    position: absolute;
+    left: 16pt;
+    right: 16pt;
+    top: 16pt;
+    bottom: 88pt;
+    border: 1px solid #cccccc;
+    background-color: black;
+    overflow: auto;
+}
+
+.listitem {
+    display: block;
+    color: #cccccc;
+    font-size: 36pt;
+    font-family: sans-serif;
+    padding-left: 8pt;
+    padding-right: 8pt;
+    padding-top: 4pt;
+    padding-bottom: 4pt;
+}
+
+.liselected {
+    background-color: #333399;
+}
+
+#progbuttonsframe {
+    position: absolute;
+    right: 12pt;
+    bottom: 12pt;
+}
+

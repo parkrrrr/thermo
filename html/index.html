@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Thermo</title>
+<link rel="stylesheet" href="thermo.css" />
+<meta charset="UTF-8"> 
+</head>
+<body class="noscroll">
+    <script async type="application/javascript" src="thermo.js"></script>
+    <canvas id="fullscreen" width="100" height="100"> </canvas>
+    
+    <div id="controlpanel">
+        <div id="tempsframe">
+            <div id="pvframe">
+                <div id="pvbg" class="temperature pv">8888</div>
+                <div id="pv" class="temperature pv">!!67</div>
+            </div>
+            <div id="svframe" >
+                <div id="svbg" class="temperature sv">8888</div>
+                <div id="sv" class="temperature sv">!!!0</div>
+            </div>
+        </div>
+        <div id="timesframe">
+            <div id="eltimeframe">
+                <div id="eltbg" class="time elt">88:88:88</div>
+                <div id="elt" class="time elt">12:34:56</div>
+            </div>
+            <div id="sctimeframe">
+                <div id="sctbg" class="time sct">88:88:88</div>
+                <div id="sct" class="time sct">23:45:06</div>
+            </div>
+        </div>
+        <div id="buttonsframe">
+            <div class="button" id="stop"><span class="buttontext">⯀</span></div>
+            <div class="button" id="pause"><span class="buttontext">❙❙</span></div>
+            <div class="button" id="set"><span class="buttontext">🌡</span></div>
+            <div class="button" id="select"><span class="buttontext">🖹</span></div>
+        </div>
+    </div>
+    
+    <div id="programs">
+        <div id="listframe">
+            <div id="list">
+                <div id="li_1" class="listitem">Boro Garage</div>
+                <div id="li_2" class="listitem liselected">Boro Anneal</div>
+                <div id="li_3" class="listitem">Boro Strike</div>
+                <div id="li_4" class="listitem">Filler 1</div>
+                <div id="li_5" class="listitem">Filler 2</div>
+                <div id="li_6" class="listitem">Filler 3</div>
+                <div id="li_7" class="listitem">Filler 4</div>
+                <div id="li_8" class="listitem">Filler 5</div>
+                <div id="li_9" class="listitem">Filler 6</div>
+                <div id="li_10" class="listitem">Filler 7</div>
+                <div id="li_11" class="listitem">Filler 8</div>
+                <div id="li_12" class="listitem">Filler 9</div>
+                <div id="li_13" class="listitem">Filler 10</div>
+                <div id="li_14" class="listitem">Filler 11</div>
+                <div id="li_15" class="listitem">Filler 12</div>
+                <div id="li_16" class="listitem">Filler 13</div>
+                <div id="li_17" class="listitem">Filler 14</div>
+            </div>
+        </div>
+        <div id="progbuttonsframe">
+            <div class="button" id="new"><span class="buttontext">✴</span></div>
+            <div class="button" id="delete"><span class="buttontext">✗</span></div>
+            <div class="button" id="edit"><span class="buttontext">✎</span></div>
+            <div class="button" id="run"><span class="buttontext">⯈</span></div>
+            <div class="button" id="back"><span class="buttontext">⮈</span></div>
+        </div>
+    </div>
+</body>
