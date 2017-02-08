@@ -1,5 +1,9 @@
 cmake_minimum_required (VERSION 2.6)
 project (Thermo)
+cmake_policy(SET CMP0015 NEW)
+include_directories(SQLiteCpp/include)
+link_directories(SQLiteCpp/build)
+
 set (LIBS boost_system boost_iostreams c stdc++ pthread SQLiteCpp rt sqlite3)
 
 add_executable (server server.cpp)
