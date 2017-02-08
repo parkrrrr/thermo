@@ -64,9 +64,11 @@ public:
         using namespace boost::interprocess;
         if ( create ) {
             // remove any existing object, then create a new one with room for 1000 bytes. (that's way more than sizeof(Shared) but smaller than a page)
-            boost::interprocess::shared_memory_object::remove( "thermo_shared_memory");
-            sharedMemory = new shared_memory_object( create_only, "thermo_shared_memory", read_write );
-            sharedMemory->truncate(1000);
+            shared_memory_object::remove( "thermo_shared_memory");
+            permissions perms;
+            perms.set_unrestricted(); 
+            sharedMemory = new shared_memory_object( create_only, "thermo_shared_memory", read_write, perms );
+            sharedMemory->truncate(sizeof(Shared));
         }
         else {
             // open the shared memory if it exists. Probably crashes if it doesn't.
@@ -97,7 +99,9 @@ public:
         if ( create ) {
             // remove any existing queue, then create a new one with room for 100 Messages.
             boost::interprocess::message_queue::remove("thermo_message_queue");
-            messageQueue = new message_queue( create_only, "thermo_message_queue", 100, sizeof(Message));
+            permissions perms;
+            perms.set_unrestricted(); 
+            messageQueue = new message_queue( create_only, "thermo_message_queue", 100, sizeof(Message),perms);
         }
         else {
             // open the message queue if it exists. Probably crashes if it doesn't.
