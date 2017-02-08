@@ -1,0 +1,6 @@
+[submodule "DSEG"]
+	path = DSEG
+	url = https://github.com/keshikan/DSEG.git
+[submodule "SQLiteCpp"]
+	path = SQLiteCpp
+	url = https://github.com/SRombauts/SQLiteCpp.git
