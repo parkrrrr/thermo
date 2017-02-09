@@ -21,9 +21,11 @@ int main(int argc, char **argv) {
     SQLite::Database database("thermo.db");
 
     int lastTime = 0;
-    SQLite::Statement query(database, "SELECT MAX(timet) FROM log");
-    if ( query.executeStep()) {
-        lastTime = query.getColumn(0);
+    {
+        SQLite::Statement query(database, "SELECT MAX(timet) FROM log");
+        if ( query.executeStep()) {
+            lastTime = query.getColumn(0);
+        }
     }
 
     const char *programName = "Idle";
@@ -33,7 +35,7 @@ int main(int argc, char **argv) {
         nameQuery.bind(1,shared->firingID);
 
         if ( nameQuery.executeStep()) {
-            programName = query.getColumn(0);
+            programName = nameQuery.getColumn(0);
         }
         else {
             programName = "Setpoint";
