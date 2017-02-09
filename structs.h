@@ -21,19 +21,6 @@ struct Message {
 };
 
 /*
-This is the structure of the shared memory segment, used by the server to communicate state to clients
-*/
-
-struct Shared {
-    int sv;                  // < current setpoint value (changes when a ramp is running)
-    int pv;                  // < current process value
-    int segTimeElapsed;      // < time elapsed in the current segment
-    int progTimeElapsed;     // < time elapsed before the current segment (DOES NOT include current segment time)
-    int firingID;            // < ID of the currently running firing in the database (or 0 if no current firing)
-    int stepID;              // < step in the current running firing in the Firings table; inserted pauses may cause this number to vary from those in Programs.
-};
-
-/*
 This class encapsulates the various types of segments. It's basically the same as an enum in a namespace with a default, for now.
 */
 
@@ -49,6 +36,21 @@ public:
     SegmentType(void) {value = Pause;} 
     SegmentType &operator =(int newValue ) {value = newValue;return *this;}  
     operator int() {return value;}
+};
+
+/*
+This is the structure of the shared memory segment, used by the server to communicate state to clients
+*/
+
+struct Shared {
+    int sv;                  // < current setpoint value (changes when a ramp is running)
+    int pv;                  // < current process value
+    int segTimeElapsed;      // < time elapsed in the current segment
+    int progTimeElapsed;     // < time elapsed before the current segment (DOES NOT include current segment time)
+    int segTimePlanned;      // < time the current segment "should" take - zero if unknown
+    SegmentType segmentType; // < type of the current segment
+    int firingID;            // < ID of the currently running firing in the database (or 0 if no current firing)
+    int stepID;              // < step in the current running firing in the Firings table; inserted pauses may cause this number to vary from those in Programs.
 };
 
 /*

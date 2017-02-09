@@ -230,7 +230,9 @@ public:
         }
         if (shared->firingID) {
             ++shared->stepID;
-        } 
+        }
+        shared->segmentType = segment.type;
+        shared->segTimePlanned = segment.rampTime; 
         ResetSegmentStart();
     }
     
