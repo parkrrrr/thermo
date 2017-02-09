@@ -209,6 +209,11 @@ public:
     
     // Go to the next segment in the current program, if any
     void NextSegment(void) {
+        // set the SV to the ramp endpoint in case the ramp terminated 
+        // early due to a "close enough" SV. 
+        if ( segment.type == SegmentType::Ramp ) {
+            SetSV(segment.targetSV, false );
+        }
         WriteFiringRecord();
         shared->progTimeElapsed += shared->segTimeElapsed;
         shared->segTimeElapsed = 0;
@@ -241,7 +246,7 @@ public:
 
         // An AFAP or Ramp segment ends if it reaches its target SV (plus or minus the PV margin)
         if ( segment.type == SegmentType::AFAP || segment.type == SegmentType::Ramp ) {
-            if ( labs(shared->pv - segment.targetSV) <= pv_margin ) {
+            if ( labs(shared->pv - segment.targetSV) < pv_margin ) {
                 NextSegment();
             }            
         }
