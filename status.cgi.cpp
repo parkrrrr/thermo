@@ -29,13 +29,15 @@ int main(int argc, char **argv) {
     }
 
     const char *programName = "Idle";
+    int programID = 0;
     if ( shared->firingID ) {
         SQLite::Statement nameQuery(database, 
-            "SELECT programInfo.name FROM firingInfo INNER JOIN programInfo ON firingInfo.programID=programInfo.programID WHERE firingID=?");
+            "SELECT programinfo.programID, programInfo.name FROM firingInfo INNER JOIN programInfo ON firingInfo.programID=programInfo.programID WHERE firingID=?");
         nameQuery.bind(1,shared->firingID);
 
         if ( nameQuery.executeStep()) {
-            programName = nameQuery.getColumn(0);
+            programID = nameQuery.getColumn(0);
+            programName = nameQuery.getColumn(1);
         }
         else {
             programName = "Setpoint";
@@ -48,9 +50,12 @@ int main(int argc, char **argv) {
     Json::Value root;
 
     root["name"] = Json::Value(programName);
+    root["firingID"] = Json::Value(shared->firingID);
+    root["programID"] = Json::Value(programID);
     root["pv"] = Json::Value(shared->pv);
     root["sv"] = Json::Value(shared->sv);
     root["segment"] = Json::Value(shared->stepID);
+    root["segmentType"] = Json::Value(shared->segmentType);
     root["elapsedTime"] = Json::Value(to_string(shared->segTimeElapsed));
     root["plannedTime"] = Json::Value(to_string(shared->segTimePlanned));
     root["lastTime"] = Json::Value(lastTime);
