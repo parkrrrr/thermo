@@ -33,27 +33,39 @@ function DrawGraph(parameters) {
     }
     ctx.stroke();
 
-    ctx.scale( width/dispSec, pphundred/100 );
-    ctx.translate( -parameters.startTime, 0);
- 
+    function ScaleX(x) {
+        return Math.round((x-(lastTimeLogged-dispSec)) * pphour / 3600 );
+    }
+    function ScaleY(y) {
+        return -Math.round(y * pphundred / 100);
+    }
+
     // draw seg lines
     ctx.strokeStyle = "#999900";
     var key = "";
     ctx.beginPath();
     for ( key in parameters.segments ) { 
-        var xt = parseInt(key );
-        ctx.moveTo(xt,0); ctx.lineTo(xt,-1700); 
+        var xt = ScaleX(parseInt( key ));
+        ctx.moveTo(xt,0); ctx.lineTo(xt,-height); 
     }
     ctx.stroke();
 
     // draw temp graph
     ctx.strokeStyle = "#333399";
-    ctx.lineWidth = ctx.lineWidth * 2;
+    ctx.lineWidth = 3;
     var i = 0;
     ctx.beginPath();
-    ctx.moveTo( parameters.temps[0][0], -parameters.temps[0][1] );
+    var x = ScaleX(parameters.temps[0][0]);
+    var y = ScaleY(parameters.temps[0][1]);
+    ctx.moveTo( x, y );
     for (i = 1; i < parameters.temps.length; ++i ) {
-        ctx.lineTo( parameters.temps[i][0], -parameters.temps[i][1] );
+        var newX = ScaleX(parameters.temps[i][0]);
+        var newY = ScaleY(parameters.temps[i][1]);
+        if ( newX != x ) {
+            x = newX;
+            y = newY;
+            ctx.lineTo( x, y );
+        }
     }
     ctx.stroke(); 
 }
