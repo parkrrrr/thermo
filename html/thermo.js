@@ -61,7 +61,7 @@ function DrawGraph(parameters) {
     for (i = 1; i < parameters.temps.length; ++i ) {
         var newX = ScaleX(parameters.temps[i][0]);
         var newY = ScaleY(parameters.temps[i][1]);
-        if ( newX != x ) {
+        if ( newX != x || newY != y ) {
             x = newX;
             y = newY;
             ctx.lineTo( x, y );
