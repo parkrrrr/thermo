@@ -1,4 +1,5 @@
 
+var lastTimeGraphed = 0;
 var lastTimeLogged = 0;
 var firingID = 0;
 var segmentType = 0;
@@ -15,6 +16,8 @@ function DrawGraph(parameters) {
     var pphour = pphundred; // set the time axis such that 100 dph is a 45-degree line
     var dispSec = Math.round(3600 * width / pphour);
 
+    ctx.clearRect(0,0,width,height);
+    ctx.save();
     ctx.translate(0,height);
 
     // draw temp lines
@@ -67,19 +70,22 @@ function DrawGraph(parameters) {
             ctx.lineTo( x, y );
         }
     }
-    ctx.stroke(); 
+    ctx.stroke();
+    ctx.restore(); 
 }
 
 function UpdateGraph() {
     var canvas = document.getElementById("fullscreen");
-    var width = parseInt(getComputedStyle(canvas).width);
-    var height = parseInt(getComputedStyle(canvas).height); 
-    if ( canvas.width != width ) canvas.width = width;
-    if ( canvas.height != height ) canvas.height = height;
-
+    var width = canvas.width;
+    var height = canvas.height;
     var pphundred = height/16;
     var pphour = pphundred; // set the time axis such that 100 dph is a 45-degree line
     var dispSec = Math.round(3600 * width / pphour);
+
+    if (lastTimeGraphed != 0 ) {
+        if (( lastTimeLogged - lastTimeGraphed ) * pphour / 3600 < 1 ) return;
+    }
+    lastTimeGraphed = lastTimeLogged;
 
     var request = new XMLHttpRequest;
     request.open( "GET", "/cgi-bin/log.cgi?sec=" + dispSec.toString() );
@@ -94,14 +100,17 @@ function UpdateGraph() {
 
 function Update() {
     var canvas = document.getElementById("fullscreen");
-    var width = parseInt(getComputedStyle(canvas).width);
-    var height = parseInt(getComputedStyle(canvas).height); 
+    var style = getComputedStyle(document.body);
+    var width = parseInt(style.width);
+    var height = parseInt(style.height); 
     if ( canvas.width != width ) {
         canvas.width = width;
+        lastTimeGraphed = 0; 
         lastTimeLogged = 0;
     }
     if ( canvas.height != height ) { 
         canvas.height = height;
+        lastTimeGraphed = 0; 
         lastTimeLogged = 0;
     }
     var request = new XMLHttpRequest;

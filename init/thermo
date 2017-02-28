@@ -1,0 +1,20 @@
+#! /bin/sh
+# /etc/init.d/thermo
+#
+
+case "$1" in
+  start)
+    echo "Starting thermo"
+    nohup /usr/bin/thermo-server </dev/null >/dev/null 2>/dev/null 
+    ;;
+  stop)
+    echo "Stopping thermo"
+    /usr/bin/thermo-quit 
+    ;;
+  *)
+    echo "Usage: /etc/init.d/thermo {start|stop}"
+    exit 1
+    ;;
+esac
+
+exit 0

@@ -10,6 +10,8 @@
 int main(int argc, char **argv) {
     SQLite::Database database("thermo.db");
 
+    database.setBusyTimeout(1000);
+
     cgicc::Cgicc cgi;
     const cgicc::CgiEnvironment &environment( cgi.getEnvironment());
     std::string queryString = environment.getQueryString();
