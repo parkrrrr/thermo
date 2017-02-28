@@ -1,7 +1,7 @@
 #!/usr/bin/fontforge
 
 Open("Symbola.ttf")
-Select(0u25b6,0u25b6,0u2BC0,0u2BC0,0u2759,0u2759,0u1F321,0u1F321,0u1F5B9,0u1F5B9,0u2734,0u2734,0u2717,0u2717,0u270E,0u270E,0u2BC8,0u2BC8,0u2B88,0u2B88,0u2B06,0u2B07,0u2713,0u2714,0u1f5d1,0u1f5d1)
+Select(0u25b6,0u25b6,0u2B06,0u2BC8,0u2713,0u2759,0u1F321,0u1F321,0u1F5B9,0u1f5d1)
 SelectInvert()
 DetachAndRemoveGlyphs()
 Generate("Symbola-Thermo.woff")
