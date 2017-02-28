@@ -210,3 +210,33 @@
     bottom: 12pt;
 }
 
+#setpoint    {
+    visibility: hidden;
+    position: absolute;
+    left: 1in;
+    bottom: 1.25in;
+    height: 1.75in;
+    width: 156pt;
+    background-color: rgba(0,0,0,0.75);
+    border: 3px solid #cccccc;
+    z-index: 2;
+}
+
+#setpoint_edit {
+    background-color: black;
+    margin: 8pt;
+    font-family: d7mbi; 
+    font-size: 28pt;
+    color: #00ff00;    
+    text-align: right;
+}
+
+#speditframe {
+    text-align: center;
+}
+
+#spbuttonsframe {
+    position: absolute;
+    right: 12pt;
+    bottom: 12pt;
+}

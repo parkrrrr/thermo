@@ -224,13 +224,36 @@ function RunSelectedProgram() {
     HideProgramDialog();
 } 
 
+function ShowSetpointDialog() {
+    document.getElementById("setpoint").style.visibility = "visible";
+    FillSetpointEdit();
+}
+
+function FillSetpointEdit() {
+    document.getElementById("setpoint_edit").value = document.getElementById("sv").innerText;
+}
+
+function HideSetpointDialog() {
+    document.getElementById("setpoint").style.visibility = "hidden";   
+}
+
+function SetSetpoint() {
+    var sp = document.getElementById("setpoint_edit").value;
+    SendCommand( 3, sp, 0 );
+    HideSetpointDialog();
+}
+
 function Setup() {
     document.getElementById("select").addEventListener("click", ShowProgramDialog);
     document.getElementById("stop").addEventListener("click", StopProgram);
+    document.getElementById("set").addEventListener("click", ShowSetpointDialog);
     document.getElementById("pause").addEventListener("click", PauseResumeProgram);
     
     document.getElementById("back").addEventListener("click", HideProgramDialog);
     document.getElementById("run").addEventListener("click", RunSelectedProgram);
+    
+    document.getElementById("sp_ok").addEventListener("click", SetSetpoint);
+    document.getElementById("sp_cancel").addEventListener("click",HideSetpointDialog);
     setInterval(Update,1000);
 }
 
