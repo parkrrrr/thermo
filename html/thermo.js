@@ -6,6 +6,12 @@ var segmentType = 0;
 var pauseText = "❙❙";
 var resumeText = "\u25b6";
 
+var dragElement;
+var dragStartX = 0;
+var dragStartY = 0;
+var dragElemX = 0;
+var dragElemY = 0;
+
 function DrawGraph(parameters) {
     var canvas = document.getElementById("fullscreen");
     var ctx = canvas.getContext("2d");
@@ -143,28 +149,32 @@ function SendCommand( cmd, p1, p2 ) {
     request.send();
 }
 
-function StopProgram() {
+function StopProgram( event ) {
     if ( !firingID ) return;
     if ( !confirm("Stop the currently running program?")) return;
     SendCommand(2,0,0);
+    event.preventDefault();
 }
 
-function PauseResumeProgram() {
+function PauseResumeProgram( event ) {
     if ( segmentType == 3 ) { // pause
         SendCommand(6,0,0); // resume
     } 
     else {
         SendCommand(5,0,0); // pause
     }
+    event.preventDefault();
 }
 
-function ShowProgramDialog() {
+function ShowProgramDialog( event ) {
     document.getElementById("programs").style.visibility = "visible";
     FillProgramList();
+    event.preventDefault();
 }
 
-function HideProgramDialog() {
+function HideProgramDialog( event ) {
     document.getElementById("programs").style.visibility = "hidden";
+    event.preventDefault();
 }
 
 var selectedItem = null;
@@ -208,33 +218,77 @@ function GetSelectedId() {
     return selectedItemId;
 }
 
-function RunSelectedProgram() {
+function RunSelectedProgram(event) {
     if ( !GetSelectedId()) return;
     if ( firingID && !confirm("Stop the currently running program?")) return;
     SendCommand(4, GetSelectedId(), 1);
     HideProgramDialog();
+    event.preventDefault();
 } 
 
-function ShowSetpointDialog() {
+function ShowSetpointDialog(event) {
     document.getElementById("setpoint").style.visibility = "visible";
     FillSetpointEdit();
+    event.preventDefault();
 }
 
 function FillSetpointEdit() {
-    document.getElementById("setpoint_edit").value = document.getElementById("sv").innerText;
+    var edit = document.getElementById("setpoint_edit");
+    edit.value = document.getElementById("sv").innerText;
+    edit.focus();
 }
 
-function HideSetpointDialog() {
+function HideSetpointDialog(event) {
     document.getElementById("setpoint").style.visibility = "hidden";   
+    event.preventDefault();
 }
 
-function SetSetpoint() {
+function SetSetpoint(event) {
     var sp = document.getElementById("setpoint_edit").value;
     SendCommand( 3, sp, 0 );
-    HideSetpointDialog();
+    HideSetpointDialog(event);
+}
+
+function StartDrag( event ) {
+    dragElement = event.target;
+    while ( !dragElement.classList.contains("dialog")) {
+        if ( dragElement.classList.contains("control")) {
+            dragElement = null;
+            return;
+        }
+        dragElement = dragElement.parentElement;
+    }
+    document.body.addEventListener("mouseup", EndDrag );
+    document.body.addEventListener("mousemove", MoveDrag );
+    dragStartX = event.screenX;
+    dragStartY = event.screenY;
+    var sty = getComputedStyle( dragElement );
+    dragElemX = parseInt(sty.left);
+    dragElemY = parseInt(sty.top);
+    event.preventDefault();
+}
+
+function MoveDrag( event ) {
+    
+    dragElement.style.left = (event.screenX - dragStartX + dragElemX) + "px";
+    dragElement.style.top = (event.screenY - dragStartY + dragElemY) + "px";   
+    
+    event.preventDefault();
+}
+
+function EndDrag( event ) {
+    MoveDrag(event);
+    document.body.removeEventListener( "mouseup", EndDrag );
+    document.body.removeEventListener( "mousemove", MoveDrag );
+    dragElement = null;    
 }
 
 function Setup() {
+    var dialogs = document.getElementsByClassName("dialog");
+    for (var i = 0; i < dialogs.length; ++i ) {
+        dialogs[i].addEventListener("mousedown", StartDrag);
+    }
+    
     document.getElementById("select").addEventListener("click", ShowProgramDialog);
     document.getElementById("stop").addEventListener("click", StopProgram);
     document.getElementById("set").addEventListener("click", ShowSetpointDialog);
@@ -248,4 +302,4 @@ function Setup() {
     setInterval(Update,1000);
 }
 
-setTimeout( Setup, 1000);
+setTimeout( Setup, 100);
