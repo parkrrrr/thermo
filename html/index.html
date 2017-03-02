@@ -9,7 +9,7 @@
     <script async type="application/javascript" src="thermo.js"></script>
     <canvas id="fullscreen" width="100" height="100"> </canvas>
     
-    <div id="controlpanel">
+    <div id="controlpanel" class="dialog">
         <div id="tempsframe">
             <div id="pvframe">
                 <div id="pvbg" class="temperature pv">8888</div>
@@ -32,34 +32,34 @@
             </div>
         </div>
         <div id="buttonsframe">
-            <div class="button" id="stop"><span class="buttontext">⯀</span></div>
-            <div class="button" id="pause"><span class="buttontext">❙❙</span></div>
-            <div class="button" id="set"><span class="buttontext">🌡</span></div>
-            <div class="button" id="select"><span class="buttontext">🖹</span></div>
+            <div class="button control" id="stop"><span class="buttontext">⯀</span></div>
+            <div class="button control" id="pause"><span class="buttontext">❙❙</span></div>
+            <div class="button control" id="set"><span class="buttontext">🌡</span></div>
+            <div class="button control" id="select"><span class="buttontext">🖹</span></div>
         </div>
     </div>
     
-    <div id="programs">
+    <div id="programs" class="dialog">
         <div id="listframe">
             <div id="list">
             </div>
         </div>
         <div id="progbuttonsframe">
-            <div class="button" id="new"><span class="buttontext">✴</span></div>
-            <div class="button" id="delete"><span class="buttontext">🗑</span></div>
-            <div class="button" id="edit"><span class="buttontext">✎</span></div>
-            <div class="button" id="run"><span class="buttontext">⯈</span></div>
-            <div class="button" id="back"><span class="buttontext">⮈</span></div>
+            <div class="button control" id="new"><span class="buttontext">✴</span></div>
+            <div class="button control" id="delete"><span class="buttontext">🗑</span></div>
+            <div class="button control" id="edit"><span class="buttontext" style="line-height:1em;">✎</span></div>
+            <div class="button control" id="run"><span class="buttontext">⯈</span></div>
+            <div class="button control" id="back"><span class="buttontext">⮈</span></div>
         </div>
     </div>
     
-    <div id="setpoint">
+    <div id="setpoint" class="dialog">
         <div id="speditframe">
-            <input type="text" id="setpoint_edit" class="sp_edit" min="0" max="1800" step="10" size="4" maxlength="4" value="0" />
+            <input class="control" type="text" id="setpoint_edit" class="sp_edit" min="0" max="1800" step="10" size="4" maxlength="4" value="0" />
         </div>
         <div id="spbuttonsframe">
-            <div class="button" id="sp_ok"><span class="buttontext" style="line-height:1em;">✔</span></div>
-            <div class="button" id="sp_cancel"><span class="buttontext">✗</span></div>
+            <div class="button control" id="sp_ok"><span class="buttontext" style="line-height:1em;">✔</span></div>
+            <div class="button control" id="sp_cancel"><span class="buttontext">✗</span></div>
         </div>
     </div>
     
