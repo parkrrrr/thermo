@@ -283,6 +283,28 @@ function EndDrag( event ) {
     dragElement = null;    
 }
 
+function ShowProgramEditDialog( event ) {
+    document.getElementById("program_edit").style.visibility = "visible";
+    event.preventDefault();   
+}
+
+function HideProgramEditDialog( event ) {
+    document.getElementById("program_edit").style.visibility = "hidden";   
+    event.preventDefault();   
+}
+
+function NewProgram( event ) {
+    ShowProgramEditDialog( event );
+}
+
+function EditProgram( event ) {
+    ShowProgramEditDialog( event );
+}
+
+function SaveProgram( event ) {
+    HideProgramEditDialog( event );
+}
+
 function Setup() {
     var dialogs = document.getElementsByClassName("dialog");
     for (var i = 0; i < dialogs.length; ++i ) {
@@ -295,10 +317,16 @@ function Setup() {
     document.getElementById("pause").addEventListener("click", PauseResumeProgram);
     
     document.getElementById("back").addEventListener("click", HideProgramDialog);
-    document.getElementById("run").addEventListener("click", RunSelectedProgram);
+    document.getElementById("new").addEventListener("click", NewProgram);
+    document.getElementById("edit").addEventListener("click", EditProgram);
+    document.getElementById("run").addEventListener("click", RunSelectedProgram);    
     
     document.getElementById("sp_ok").addEventListener("click", SetSetpoint);
     document.getElementById("sp_cancel").addEventListener("click",HideSetpointDialog);
+
+    document.getElementById("pe_ok").addEventListener("click", SaveProgram);
+    document.getElementById("pe_cancel").addEventListener("click",HideProgramEditDialog);
+    
     setInterval(Update,1000);
 }
 
