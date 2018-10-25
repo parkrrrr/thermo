@@ -547,8 +547,12 @@ public:
         NextSegment();
     } 
 
-    // Handle the RESUME message. This just skips to the next segment. Notably, it doesn't really care if the current segment is a Pause.
+    // Handle the RESUME message. This just skips to the next segment, but only if the 
+    // current one is a pause. Resume messages shouldn't be possible for non-pause segments
     void ResumeMessageHandler( void ) {
+        if ( segment.type != SegmentType::Pause ) { 
+            return; 
+        } 
         NextSegment();
     }
 
