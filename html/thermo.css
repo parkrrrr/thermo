@@ -240,3 +240,54 @@
     right: 12pt;
     bottom: 12pt;
 }
+
+#program_edit {
+    visibility: hidden;
+    position: absolute;
+    left: 10vw;
+    top: 10vh;
+    width: 80vw;
+    height: 80vh;
+    background-color: rgba(0,0,0,0.75);
+    border: 3px solid #cccccc;
+    z-index: 2;
+    font-size: 36pt;
+    font-family: sans-serif;     
+}
+
+#progeditframe{
+    border: 1px solid #cccccc;
+    margin-left: 16pt;
+    margin-top: 16pt;
+    margin-right: 16pt;
+    background-color: black;    
+}
+
+#prog_edit {
+    font-size: 36pt;
+    font-family: sans-serif;     
+}
+
+#prog_list {
+    border: 1px solid #cccccc;
+    margin-left: 16pt;
+    margin-top: 16pt;
+    margin-right: 16pt;
+    background-color: black;
+}
+
+.label {
+    color: white;
+    font-weight: bold;
+}
+
+.label_col {
+    color: white;
+    font-weight: bold;
+}
+
+#prog_edit_buttons_frame {
+    position: absolute;
+    right: 12pt;
+    bottom: 12pt;
+}

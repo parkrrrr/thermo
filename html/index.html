@@ -41,7 +41,7 @@
     
     <div id="programs" class="dialog">
         <div id="listframe">
-            <div id="list">
+            <div id="list" class="control">
             </div>
         </div>
         <div id="progbuttonsframe">
@@ -55,7 +55,7 @@
     
     <div id="setpoint" class="dialog">
         <div id="speditframe">
-            <input class="control" type="text" id="setpoint_edit" class="sp_edit" min="0" max="1800" step="10" size="4" maxlength="4" value="0" />
+            <input class="control" type="text" id="setpoint_edit" class="sp_edit" size="4" maxlength="4" value="0" />
         </div>
         <div id="spbuttonsframe">
             <div class="button control" id="sp_ok"><span class="buttontext" style="line-height:1em;">✔</span></div>
@@ -63,14 +63,17 @@
         </div>
     </div>
     
-    <div id="program_edit">
+    <div id="program_edit" class="dialog">
+        <div id="progeditframe">
+            <label><span class="label">Name</span> <input class="control" type="text" id="prog_edit" class="prog_edit" size="30" value="" />
+        </div>
         <div id="prog_list">
             <div id="prog_header">
-                <span id="ph_step">Step</span>
-                <span id="ph_type">Type</span>
-                <span id="ph_temp">Degrees</span>
-                <span id="ph_param">For/At</span>
-                <span id="ph_units"></span>
+                <span id="ph_step" class="label_col">Step</span>
+                <span id="ph_type" class="label_col">Type</span>
+                <span id="ph_temp" class="label_col">Degrees</span>
+                <span id="ph_param" class="label_col">For/At</span>
+                <span id="ph_units" class="label_col">&nbsp;</span>
             </div>
             <div id="prog_line_1" class="prog_line">
                 <span id="prog_step_1" class="prog_step">1</span>
@@ -81,8 +84,8 @@
             </div>
         </div>
         <div id="prog_edit_buttons_frame">
-            <div class="button" id="pe_ok"><span class="buttontext" style="line-height:1em;">✔</span></div>
-            <div class="button" id="pe_cancel"><span class="buttontext">✗</span></div>
+            <div class="button control" id="pe_ok"><span class="buttontext" style="line-height:1em;">✔</span></div>
+            <div class="button control" id="pe_cancel"><span class="buttontext">✗</span></div>
         </div>
     </div>
 </body>
